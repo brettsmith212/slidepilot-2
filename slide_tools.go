@@ -263,4 +263,105 @@ resultJSON, _ := json.Marshal(result)
 return string(resultJSON), nil
 }
 
+// AddSlideDefinition defines the add_slide tool
+var AddSlideDefinition = ToolDefinition{
+	Name: "add_slide",
+	Description: `Add a new slide to the presentation with optional initial content.
+	
+Use this tool to create new slides in the presentation. You can specify position, layout type, and initial title content.`,
+	InputSchema: AddSlideInputSchema,
+	Function:    AddSlide,
+}
+
+type AddSlideInput struct {
+	PresentationPath string `json:"presentation_path" jsonschema_description:"Path to the PowerPoint (.pptx) file"`
+	Position         int    `json:"position,omitempty" jsonschema_description:"Position to insert slide (optional, defaults to end, 1-based indexing)"`
+	Layout           string `json:"layout,omitempty" jsonschema_description:"Slide layout type (optional, defaults to 'blank')"`
+	Title            string `json:"title,omitempty" jsonschema_description:"Initial title text for the slide (optional)"`
+}
+
+var AddSlideInputSchema = GenerateSchema[AddSlideInput]()
+
+func AddSlide(input json.RawMessage) (string, error) {
+	addSlideInput := AddSlideInput{}
+	err := json.Unmarshal(input, &addSlideInput)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse input: %v", err)
+	}
+
+	if addSlideInput.PresentationPath == "" {
+		return "", fmt.Errorf("presentation_path is required")
+	}
+
+	// Set defaults
+	layout := addSlideInput.Layout
+	if layout == "" {
+		layout = "blank"
+	}
+
+	fmt.Printf("Adding slide to: %s\n", addSlideInput.PresentationPath)
+	if addSlideInput.Position > 0 {
+		fmt.Printf("Position: %d\n", addSlideInput.Position)
+	}
+	if addSlideInput.Title != "" {
+		fmt.Printf("Title: %s\n", addSlideInput.Title)
+	}
+
+	// Build command arguments
+	args := []string{
+		"uno_add_slide.py",
+		addSlideInput.PresentationPath,
+	}
+
+	// Add optional arguments
+	if addSlideInput.Position > 0 {
+		args = append(args, fmt.Sprintf("%d", addSlideInput.Position))
+	} else {
+		args = append(args, "")  // Empty position means append to end
+	}
+
+	args = append(args, layout)
+
+	if addSlideInput.Title != "" {
+		args = append(args, addSlideInput.Title)
+	}
+
+	// Call Python UNO script
+	cmd := exec.Command("python3", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to add slide: %v\nOutput: %s", err, string(output))
+	}
+
+	// Validate that the output is valid JSON
+	var result interface{}
+	if err := json.Unmarshal(output, &result); err != nil {
+		return "", fmt.Errorf("invalid JSON output from UNO script: %v", err)
+	}
+
+	// Parse the result to get slide information
+	var addResult map[string]interface{}
+	if err := json.Unmarshal(output, &addResult); err != nil {
+		return "", fmt.Errorf("failed to parse add slide result: %v", err)
+	}
+
+	// Automatically export slides for visual verification (like edit_slide_text does)
+	fmt.Printf("Exporting slides for visual verification...\n")
+	slides, exportErr := ConvertPPTXToJPEG(addSlideInput.PresentationPath, "slides")
+	if exportErr != nil {
+		// Don't fail the add operation if export fails, just warn
+		fmt.Printf("Warning: Failed to export slides for preview: %v\n", exportErr)
+	} else {
+		// Add export information to the result
+		addResult["exported_slides"] = slides
+		addResult["slides_directory"] = "slides"
+		
+		// Re-marshal the enhanced result
+		enhancedResult, _ := json.Marshal(addResult)
+		return string(enhancedResult), nil
+	}
+
+	return string(output), nil
+}
+
 

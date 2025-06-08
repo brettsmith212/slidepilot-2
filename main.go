@@ -28,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	tools := []ToolDefinition{ListSlidesDefinition, ReadSlideDefinition, EditSlideTextDefinition, ExportSlidesDefinition}
+	tools := []ToolDefinition{ListSlidesDefinition, ReadSlideDefinition, EditSlideTextDefinition, ExportSlidesDefinition, AddSlideDefinition}
 	agent := NewAgent(&client, getUserMessage, tools)
 	err := agent.Run(context.TODO())
 	if err != nil {
