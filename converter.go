@@ -8,22 +8,6 @@ import (
 	"strings"
 )
 
-// EditSlideTitle edits the title of a specific slide using Python UNO script
-func EditSlideTitle(pptxPath string, slideIndex int, newTitle string) error {
-	fmt.Printf("Editing slide %d title to '%s'...\n", slideIndex, newTitle)
-	
-	cmd := exec.Command("python3", "edit_slide.py", pptxPath, 
-		fmt.Sprintf("%d", slideIndex), newTitle)
-	
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("edit failed: %v\nOutput: %s", err, string(output))
-	}
-	
-	fmt.Printf("Edit output: %s", string(output))
-	return nil
-}
-
 // ConvertPPTXToJPEG converts a PPTX file to JPEG slides using LibreOffice and ImageMagick
 func ConvertPPTXToJPEG(pptxPath string, outputDir ...string) ([]string, error) {
 	// Create slides output directory

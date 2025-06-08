@@ -36,7 +36,7 @@ func ListSlides(input json.RawMessage) (string, error) {
 	fmt.Printf("Listing slides in: %s\n", listSlidesInput.PresentationPath)
 
 	// Call Python UNO script
-	cmd := exec.Command("python3", "uno_list_slides.py", listSlidesInput.PresentationPath)
+	cmd := exec.Command("python3", "scripts/uno_list_slides.py", listSlidesInput.PresentationPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to list slides: %v\nOutput: %s", err, string(output))
@@ -86,7 +86,7 @@ func ReadSlide(input json.RawMessage) (string, error) {
 	fmt.Printf("Reading slide %d from: %s\n", readSlideInput.SlideNumber, readSlideInput.PresentationPath)
 
 	// Call Python UNO script
-	cmd := exec.Command("python3", "uno_read_slide.py", readSlideInput.PresentationPath, fmt.Sprintf("%d", readSlideInput.SlideNumber))
+	cmd := exec.Command("python3", "scripts/uno_read_slide.py", readSlideInput.PresentationPath, fmt.Sprintf("%d", readSlideInput.SlideNumber))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to read slide: %v\nOutput: %s", err, string(output))
@@ -164,7 +164,7 @@ editInput.SlideNumber, editInput.TargetType, editInput.TargetValue, editInput.Ne
 
 // Build command arguments
 args := []string{
-"uno_edit_slide.py",
+"scripts/uno_edit_slide.py",
 editInput.PresentationPath,
 fmt.Sprintf("%d", editInput.SlideNumber),
 editInput.TargetType,
@@ -309,7 +309,7 @@ func AddSlide(input json.RawMessage) (string, error) {
 
 	// Build command arguments
 	args := []string{
-		"uno_add_slide.py",
+		"scripts/uno_add_slide.py",
 		addSlideInput.PresentationPath,
 	}
 
@@ -399,7 +399,7 @@ func DeleteSlide(input json.RawMessage) (string, error) {
 	fmt.Printf("Deleting slide %d from: %s\n", deleteSlideInput.SlideNumber, deleteSlideInput.PresentationPath)
 
 	// Call Python UNO script
-	cmd := exec.Command("python3", "uno_delete_slide.py", deleteSlideInput.PresentationPath, fmt.Sprintf("%d", deleteSlideInput.SlideNumber))
+	cmd := exec.Command("python3", "scripts/uno_delete_slide.py", deleteSlideInput.PresentationPath, fmt.Sprintf("%d", deleteSlideInput.SlideNumber))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to delete slide: %v\nOutput: %s", err, string(output))
