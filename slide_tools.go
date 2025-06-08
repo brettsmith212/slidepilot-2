@@ -364,4 +364,76 @@ func AddSlide(input json.RawMessage) (string, error) {
 	return string(output), nil
 }
 
+// DeleteSlideDefinition defines the delete_slide tool
+var DeleteSlideDefinition = ToolDefinition{
+	Name: "delete_slide",
+	Description: `Delete a slide from the presentation.
+	
+Use this tool to remove unwanted slides from the presentation. The slide numbers will be automatically adjusted after deletion.`,
+	InputSchema: DeleteSlideInputSchema,
+	Function:    DeleteSlide,
+}
+
+type DeleteSlideInput struct {
+	PresentationPath string `json:"presentation_path" jsonschema_description:"Path to the PowerPoint (.pptx) file"`
+	SlideNumber      int    `json:"slide_number" jsonschema_description:"Slide number to delete (1-based indexing)"`
+}
+
+var DeleteSlideInputSchema = GenerateSchema[DeleteSlideInput]()
+
+func DeleteSlide(input json.RawMessage) (string, error) {
+	deleteSlideInput := DeleteSlideInput{}
+	err := json.Unmarshal(input, &deleteSlideInput)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse input: %v", err)
+	}
+
+	if deleteSlideInput.PresentationPath == "" {
+		return "", fmt.Errorf("presentation_path is required")
+	}
+
+	if deleteSlideInput.SlideNumber < 1 {
+		return "", fmt.Errorf("slide_number must be 1 or greater")
+	}
+
+	fmt.Printf("Deleting slide %d from: %s\n", deleteSlideInput.SlideNumber, deleteSlideInput.PresentationPath)
+
+	// Call Python UNO script
+	cmd := exec.Command("python3", "uno_delete_slide.py", deleteSlideInput.PresentationPath, fmt.Sprintf("%d", deleteSlideInput.SlideNumber))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to delete slide: %v\nOutput: %s", err, string(output))
+	}
+
+	// Validate that the output is valid JSON
+	var result interface{}
+	if err := json.Unmarshal(output, &result); err != nil {
+		return "", fmt.Errorf("invalid JSON output from UNO script: %v", err)
+	}
+
+	// Parse the result to get slide information
+	var deleteResult map[string]interface{}
+	if err := json.Unmarshal(output, &deleteResult); err != nil {
+		return "", fmt.Errorf("failed to parse delete slide result: %v", err)
+	}
+
+	// Automatically export slides for visual verification (like add_slide does)
+	fmt.Printf("Exporting slides for visual verification...\n")
+	slides, exportErr := ConvertPPTXToJPEG(deleteSlideInput.PresentationPath, "slides")
+	if exportErr != nil {
+		// Don't fail the delete operation if export fails, just warn
+		fmt.Printf("Warning: Failed to export slides for preview: %v\n", exportErr)
+	} else {
+		// Add export information to the result
+		deleteResult["exported_slides"] = slides
+		deleteResult["slides_directory"] = "slides"
+		
+		// Re-marshal the enhanced result
+		enhancedResult, _ := json.Marshal(deleteResult)
+		return string(enhancedResult), nil
+	}
+
+	return string(output), nil
+}
+
 
