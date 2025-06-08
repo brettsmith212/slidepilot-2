@@ -21,8 +21,15 @@ def edit_slide_title(pptx_path, slide_index, new_title):
         file_url = uno.systemPathToFileUrl(os.path.abspath(pptx_path))
         print(f"Loading document: {file_url}")
         
-        # Load the presentation
-        doc = desktop.loadComponentFromURL(file_url, "_blank", 0, ())
+        # Load the presentation with headless properties
+        from com.sun.star.beans import PropertyValue
+        
+        props = (
+            PropertyValue("Hidden", 0, True, 0),
+            PropertyValue("ReadOnly", 0, False, 0),
+        )
+        
+        doc = desktop.loadComponentFromURL(file_url, "_blank", 0, props)
         
         # Get the slides
         slides = doc.getDrawPages()
