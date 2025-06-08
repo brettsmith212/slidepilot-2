@@ -100,3 +100,95 @@ func ReadSlide(input json.RawMessage) (string, error) {
 
 	return string(output), nil
 }
+
+// EditSlideTextDefinition defines the edit_slide_text tool
+var EditSlideTextDefinition = ToolDefinition{
+Name: "edit_slide_text",
+Description: `Edit text content on a slide by targeting specific shapes or elements. 
+
+Can target by shape index, shape type, or replace specific text. This tool allows precise editing of slide content including titles, text boxes, and bullet points.
+
+Target types:
+- "shape_index": Edit specific shape by index (0, 1, 2, ...)
+- "shape_type": Edit by type ("title", "content", "text_box")  
+- "text_replace": Replace specific text (requires old_text)
+- "bullet_point": Edit specific bullet point by index`,
+InputSchema: EditSlideTextInputSchema,
+Function:    EditSlideText,
+}
+
+type EditSlideTextInput struct {
+PresentationPath string `json:"presentation_path" jsonschema_description:"Path to the PowerPoint (.pptx) file"`
+SlideNumber      int    `json:"slide_number" jsonschema_description:"Slide number to edit (1-based indexing)"`
+TargetType       string `json:"target_type" jsonschema_description:"How to target: 'shape_index', 'shape_type', 'bullet_point', or 'text_replace'"`
+TargetValue      string `json:"target_value" jsonschema_description:"Shape index (0,1,2...), shape type ('title','content','text_box'), bullet index, or text to find"`
+NewText          string `json:"new_text" jsonschema_description:"New text content to set"`
+OldText          string `json:"old_text,omitempty" jsonschema_description:"(Optional) For text_replace mode, the exact text to replace"`
+}
+
+var EditSlideTextInputSchema = GenerateSchema[EditSlideTextInput]()
+
+func EditSlideText(input json.RawMessage) (string, error) {
+editInput := EditSlideTextInput{}
+err := json.Unmarshal(input, &editInput)
+if err != nil {
+return "", fmt.Errorf("failed to parse input: %v", err)
+}
+
+if editInput.PresentationPath == "" {
+return "", fmt.Errorf("presentation_path is required")
+}
+
+if editInput.SlideNumber < 1 {
+return "", fmt.Errorf("slide_number must be 1 or greater")
+}
+
+if editInput.TargetType == "" {
+return "", fmt.Errorf("target_type is required")
+}
+
+if editInput.TargetValue == "" {
+return "", fmt.Errorf("target_value is required")
+}
+
+if editInput.NewText == "" {
+return "", fmt.Errorf("new_text is required")
+}
+
+if editInput.TargetType == "text_replace" && editInput.OldText == "" {
+return "", fmt.Errorf("old_text is required for text_replace mode")
+}
+
+fmt.Printf("Editing slide %d: %s=%s -> '%s'\n", 
+editInput.SlideNumber, editInput.TargetType, editInput.TargetValue, editInput.NewText)
+
+// Build command arguments
+args := []string{
+"uno_edit_slide.py",
+editInput.PresentationPath,
+fmt.Sprintf("%d", editInput.SlideNumber),
+editInput.TargetType,
+editInput.TargetValue,
+editInput.NewText,
+}
+
+// Add old_text if provided
+if editInput.OldText != "" {
+args = append(args, editInput.OldText)
+}
+
+// Call Python UNO script
+cmd := exec.Command("python3", args...)
+output, err := cmd.CombinedOutput()
+if err != nil {
+return "", fmt.Errorf("failed to edit slide: %v\nOutput: %s", err, string(output))
+}
+
+// Validate that the output is valid JSON
+var result interface{}
+if err := json.Unmarshal(output, &result); err != nil {
+return "", fmt.Errorf("invalid JSON output from UNO script: %v", err)
+}
+
+return string(output), nil
+}
