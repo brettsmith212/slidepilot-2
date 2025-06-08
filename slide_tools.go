@@ -192,3 +192,75 @@ return "", fmt.Errorf("invalid JSON output from UNO script: %v", err)
 
 return string(output), nil
 }
+
+// ExportSlidesDefinition defines the export_slides tool
+var ExportSlidesDefinition = ToolDefinition{
+Name: "export_slides",
+Description: `Export slides as JPEG images for preview or verification.
+
+Use this tool to generate visual representations of slides, especially useful after making edits to verify changes. Can export all slides or specific slides.`,
+InputSchema: ExportSlidesInputSchema,
+Function:    ExportSlides,
+}
+
+type ExportSlidesInput struct {
+PresentationPath string `json:"presentation_path" jsonschema_description:"Path to the PowerPoint (.pptx) file"`
+SlideNumbers     []int  `json:"slide_numbers,omitempty" jsonschema_description:"Specific slides to export (optional, defaults to all slides)"`
+OutputDir        string `json:"output_dir,omitempty" jsonschema_description:"Directory to save images (optional, defaults to 'slides/')"`
+}
+
+var ExportSlidesInputSchema = GenerateSchema[ExportSlidesInput]()
+
+func ExportSlides(input json.RawMessage) (string, error) {
+exportInput := ExportSlidesInput{}
+err := json.Unmarshal(input, &exportInput)
+if err != nil {
+return "", fmt.Errorf("failed to parse input: %v", err)
+}
+
+if exportInput.PresentationPath == "" {
+return "", fmt.Errorf("presentation_path is required")
+}
+
+// Set default output directory
+outputDir := exportInput.OutputDir
+if outputDir == "" {
+outputDir = "slides"
+}
+
+fmt.Printf("Exporting slides from: %s to %s/\n", exportInput.PresentationPath, outputDir)
+
+// Use our existing conversion function
+slides, err := ConvertPPTXToJPEG(exportInput.PresentationPath, outputDir)
+if err != nil {
+return "", fmt.Errorf("failed to export slides: %v", err)
+}
+
+// Filter slides if specific slide numbers were requested
+var filteredSlides []string
+if len(exportInput.SlideNumbers) > 0 {
+slideMap := make(map[int]bool)
+for _, num := range exportInput.SlideNumbers {
+slideMap[num-1] = true // Convert to 0-based indexing
+}
+
+for i, slide := range slides {
+if slideMap[i] {
+filteredSlides = append(filteredSlides, slide)
+}
+}
+slides = filteredSlides
+}
+
+result := map[string]interface{}{
+"success":     true,
+"slide_count": len(slides),
+"slides":      slides,
+"output_dir":  outputDir,
+}
+
+resultJSON, _ := json.Marshal(result)
+return string(resultJSON), nil
+}
+
+

@@ -25,9 +25,12 @@ func EditSlideTitle(pptxPath string, slideIndex int, newTitle string) error {
 }
 
 // ConvertPPTXToJPEG converts a PPTX file to JPEG slides using LibreOffice and ImageMagick
-func ConvertPPTXToJPEG(pptxPath string) ([]string, error) {
+func ConvertPPTXToJPEG(pptxPath string, outputDir ...string) ([]string, error) {
 	// Create slides output directory
 	slidesDir := "slides"
+	if len(outputDir) > 0 && outputDir[0] != "" {
+		slidesDir = outputDir[0]
+	}
 	if err := os.MkdirAll(slidesDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create slides directory: %v", err)
 	}
