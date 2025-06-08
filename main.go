@@ -13,8 +13,14 @@ func main() {
 	}
 
 	pptxPath := os.Args[1]
-	fmt.Printf("Converting PPTX: %s\n", pptxPath)
+	fmt.Printf("Processing PPTX: %s\n", pptxPath)
 
+	// Step 1: Edit the first slide title from "Hello" to "Goodbye"
+	if err := EditSlideTitle(pptxPath, 0, "Goodbye"); err != nil {
+		log.Fatalf("Edit failed: %v", err)
+	}
+
+	// Step 2: Convert to JPEG slides
 	slides, err := ConvertPPTXToJPEG(pptxPath)
 	if err != nil {
 		log.Fatalf("Conversion failed: %v", err)
